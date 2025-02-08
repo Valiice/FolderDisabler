@@ -1,43 +1,33 @@
 use std::env;
-use std::fs;
-use std::io;
+use std::io::{self, Write};
+use std::thread;
+use std::time::Duration;
+
+mod operations;
 
 fn main() -> io::Result<()> {
     // Get the current working directory.
     let current_dir = env::current_dir()?;
     println!("Operating in directory: {:?}", current_dir);
 
-    // Iterate over each entry in the current directory.
-    for entry in fs::read_dir(&current_dir)? {
-        let entry = entry?;
-        let path = entry.path();
+    // Ask the user whether to add or remove the prefix.
+    println!("Do you want to add the 'DISABLED_' prefix to folders? (y/n)");
+    print!("> ");
+    io::stdout().flush()?; // Ensure the prompt is printed immediately.
 
-        // Check if the entry is a directory.
-        if path.is_dir() {
-            // Attempt to get the folder name as a string.
-            if let Some(folder_name) = path.file_name().and_then(|name| name.to_str()) {
-                // If the folder name already starts with "DISABLED_", skip renaming.
-                if folder_name.starts_with("DISABLED_") {
-                    println!("Skipping folder '{}' because it is already disabled.", folder_name);
-                    continue;
-                }
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let choice = input.trim().to_lowercase();
 
-                // Create the new folder name by adding the prefix.
-                let new_name = format!("DISABLED_{}", folder_name);
-                let new_path = path.with_file_name(new_name);
-
-                // Rename the folder.
-                println!("Renaming folder '{}' to '{:?}'", folder_name, new_path.file_name().unwrap());
-                fs::rename(&path, &new_path)?;
-            }
-        } else {
-            // For non-directory entries, simply print a message and skip.
-            if let Some(name) = path.file_name().and_then(|name| name.to_str()) {
-                println!("Skipping non-directory entry: {}", name);
-            }
-        }
+    if choice == "y" {
+        operations::add_prefix(&current_dir)?;
+    } else if choice == "n" {
+        operations::remove_prefix(&current_dir)?;
+    } else {
+        println!("Invalid input. Please run the program again and enter 'y' or 'n'.");
     }
 
-    println!("Renaming complete.");
+    println!("Operation complete.");
+    thread::sleep(Duration::from_secs(3));
     Ok(())
 }
